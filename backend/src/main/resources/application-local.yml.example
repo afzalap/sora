@@ -1,0 +1,23 @@
+# Copy this file to application-local.yml (git-ignored) and fill in real values.
+# Activate with: --spring.profiles.active=local
+#
+# For local Docker Compose dev, you don't need this file at all —
+# the defaults in application.yml already match docker-compose.yml.
+# Use this file when you have real external secrets (API keys, prod DB, etc.).
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sora
+    username: sora
+    password: sora
+
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        model: llama3.2
+
+# Example: when you add SerpApi in Phase 6, put the key here:
+# sora:
+#   serpapi:
+#     key: YOUR_KEY_HERE

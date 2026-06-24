@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: sora-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sora}
+    username: ${DB_USER:sora}
+    password: ${DB_PASSWORD:sora}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # create-drop: builds the schema on startup and drops it on shutdown.
+      # Fine for development; we'll switch to 'validate' + Flyway migrations later.
+      ddl-auto: create-drop
+    show-sql: true
+    open-in-view: false   # avoids lazy-loading surprises; always fetch in the service layer
+    properties:
+      hibernate:
+        format_sql: true
+
+  ai:
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_MODEL:llama3.2}
+
+server:
+  port: 8080
