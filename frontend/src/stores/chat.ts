@@ -3,14 +3,12 @@ import { ref, nextTick } from 'vue'
 import { authHeaders } from '@/api/client'
 import type { ChatMessage } from '@/types'
 
-// Unique ID helper — just a counter, no library needed.
 let seq = 0
 const uid = () => String(++seq)
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
   const isStreaming = ref(false)
-  // Exposed so ChatThread can auto-scroll when new content arrives.
   const scrollTrigger = ref(0)
 
   function addUserMessage(content: string) {
@@ -30,23 +28,21 @@ export const useChatStore = defineStore('chat', () => {
     return msg
   }
 
-  function appendToken(msg: ChatMessage, token: string) {
-    // Once first real content arrives, stop the "Thinking…" state.
-    if (msg.toolActive && token.trim()) msg.toolActive = false
-    msg.content += token
-    scrollTrigger.value++
-  }
-
   function finaliseMessage(msg: ChatMessage) {
     msg.streaming = false
     msg.toolActive = false
     scrollTrigger.value++
   }
 
-  // Parses the Server-Sent Events stream from POST /api/chat/stream.
-  // Spring WebFlux emits each token as:  "data: <token>\n\n"
-  // We use fetch + ReadableStream because EventSource only supports GET
-  // and can't send custom headers (our JWT Authorization header).
+  // POST /api/chat — non-streaming.
+  //
+  // Why not /api/chat/stream?  Spring AI's tool-calling loop (search flights →
+  // re-prompt → generate reply) happens server-side.  The SSE stream stays
+  // open but emits nothing visible while the tool round-trip is in flight,
+  // leaving the frontend stuck in "Thinking…" indefinitely.  The non-streaming
+  // endpoint waits for the full agentic loop, then returns the final reply in
+  // one shot — reliable for Phase 1.  Phase 2 will wire typed SSE events
+  // (flight-cards, booking-success) when the backend emits them explicitly.
   async function send(content: string, onDone?: () => void) {
     if (isStreaming.value) return
 
@@ -57,47 +53,26 @@ export const useChatStore = defineStore('chat', () => {
     isStreaming.value = true
 
     try {
-      const response = await fetch('/api/chat/stream', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ message: content }),
       })
 
-      if (!response.ok || !response.body) {
-        placeholder.content = 'Sorry, something went wrong. Please try again.'
-        finaliseMessage(placeholder)
+      if (!response.ok) {
+        const status = response.status
+        placeholder.content =
+          status === 401
+            ? 'Session expired — please sign in again.'
+            : 'Something went wrong on the server. Please try again.'
         return
       }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
+      const data = (await response.json()) as { reply: string }
+      placeholder.content = data.reply
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-
-        // SSE events are separated by "\n\n".
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop() ?? ''
-
-        for (const part of parts) {
-          for (const line of part.split('\n')) {
-            if (line.startsWith('data: ')) {
-              const token = line.slice(6)
-              if (token && token !== '[DONE]') {
-                appendToken(placeholder, token)
-              }
-            }
-          }
-        }
-
-        await nextTick()
-      }
     } catch {
-      placeholder.content = 'Connection error. Is the backend running?'
+      placeholder.content = 'Could not reach the backend. Is Spring Boot running on port 8080?'
     } finally {
       finaliseMessage(placeholder)
       isStreaming.value = false

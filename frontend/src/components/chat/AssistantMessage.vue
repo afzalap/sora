@@ -18,12 +18,9 @@ defineProps<{ message: ChatMessage }>()
         Thinking…
       </div>
 
-      <!-- Text: shown as content arrives (streaming) or once done -->
+      <!-- Text: appears once content arrives -->
       <div v-if="message.content" class="text-block">
-        {{ message.content }}<span
-          v-if="message.streaming && !message.toolActive"
-          class="cursor"
-        />
+        {{ message.content }}
       </div>
 
     </div>
