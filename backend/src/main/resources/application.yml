@@ -27,5 +27,10 @@ spring:
       init:
         pull-model-strategy: never   # don't try to pull models at startup
 
+app:
+  jwt:
+    secret: ${JWT_SECRET}          # set in application-local.yml or env var
+    expiration-ms: 86400000        # 24 hours
+
 server:
   port: 8080
