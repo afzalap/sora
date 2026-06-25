@@ -15,7 +15,7 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
-                "http://localhost:5173",   // Vite dev server (React frontend)
+                "http://localhost:5173",   // Vite dev server (Vue 3 frontend)
                 "http://localhost:3000"    // fallback if using CRA or Next.js
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
