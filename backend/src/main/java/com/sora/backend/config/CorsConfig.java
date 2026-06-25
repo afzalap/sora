@@ -19,8 +19,8 @@ public class CorsConfig {
                 "http://localhost:3000"    // fallback if using CRA or Next.js
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);   // needed for HTTP Basic auth header
+        config.setAllowedHeaders(List.of("*"));   // allows Authorization: Bearer <jwt>
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
