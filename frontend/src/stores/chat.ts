@@ -52,28 +52,39 @@ export const useChatStore = defineStore('chat', () => {
     const placeholder = addAssistantPlaceholder()
     isStreaming.value = true
 
+    // Abort after 90 s — without this, fetch blocks forever if Spring or Ollama hangs.
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 90_000)
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ message: content }),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
-        const status = response.status
         placeholder.content =
-          status === 401
+          response.status === 401
             ? 'Session expired — please sign in again.'
-            : 'Something went wrong on the server. Please try again.'
+            : `Server error ${response.status}. Check that Ollama is running and the model is loaded.`
         return
       }
 
       const data = (await response.json()) as { reply: string }
       placeholder.content = data.reply
 
-    } catch {
-      placeholder.content = 'Could not reach the backend. Is Spring Boot running on port 8080?'
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        placeholder.content =
+          'No response after 90 s. Make sure Ollama is running and the model is loaded:\n\n  ollama run llama3.2:3b-instruct-q8_0'
+      } else {
+        placeholder.content =
+          'Could not reach the backend. Is Spring Boot running on port 8080?'
+      }
     } finally {
+      clearTimeout(timeout)
       finaliseMessage(placeholder)
       isStreaming.value = false
       onDone?.()
