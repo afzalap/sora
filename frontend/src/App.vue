@@ -7,7 +7,7 @@ import AppShell from '@/views/AppShell.vue'
 const auth = useAuthStore()
 
 // Theme is managed here so it applies to the root element.
-const theme = ref<'light' | 'dark'>('light')
+const theme = ref<'light' | 'dark'>('dark')
 
 function toggleTheme() {
   theme.value = theme.value === 'light' ? 'dark' : 'light'
