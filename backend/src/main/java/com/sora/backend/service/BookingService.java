@@ -2,11 +2,13 @@ package com.sora.backend.service;
 
 import com.sora.backend.domain.Booking;
 import com.sora.backend.dto.BookingResponse;
+import com.sora.backend.dto.CreateBookingRequest;
 import com.sora.backend.repository.BookingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class BookingService {
@@ -22,6 +24,23 @@ public class BookingService {
                 .stream()
                 .map(BookingResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public BookingResponse createBooking(CreateBookingRequest req, String username) {
+        Booking booking = new Booking();
+        booking.setUsername(username);
+        booking.setBookingReference("SRA-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase());
+        booking.setCarrier(req.carrier());
+        booking.setFlightNumber(req.flightNumber());
+        booking.setOrigin(req.origin());
+        booking.setDestination(req.destination());
+        booking.setDepartureTime(req.departureTime());
+        booking.setArrivalTime(req.arrivalTime());
+        booking.setPrice(req.price());
+        booking.setCurrency(req.currency());
+        booking.setStatus(Booking.BookingStatus.CONFIRMED);
+        return BookingResponse.from(bookingRepository.save(booking));
     }
 
     @Transactional
