@@ -24,6 +24,8 @@ spring:
       base-url: ${OLLAMA_URL:http://localhost:11434}
       chat:
         model: ${OLLAMA_MODEL:llama3.2}
+      init:
+        pull-model-strategy: never   # don't try to pull models at startup
 
 server:
   port: 8080
