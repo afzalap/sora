@@ -1,8 +1,8 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 defineEmits<{ send: [text: string] }>()
 
 const chips = [
-  'Cheapest flights Tokyo → Kumamoto, 15-day round trip',
+  'Cheapest flights Tokyo â†’ Kumamoto, 15-day round trip',
   "What's the baggage allowance on ANA domestic?",
   'Any flights from HND to OKA this weekend?',
   'Show my bookings',
@@ -12,10 +12,10 @@ const chips = [
 <template>
   <div class="empty-wrap">
     <!-- Sora identity -->
-    <div class="sora-mark">S</div>
+    <div class="sora-mark">空</div>
     <h1 class="greeting">Hi, I'm Sora.</h1>
     <p class="intro">
-      Tell me where you want to go — I'll search live flights and handle your bookings.
+      Tell me where you want to go â€” I'll search live flights and handle your bookings.
       I always confirm before I book anything.
     </p>
 
@@ -53,9 +53,9 @@ const chips = [
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
   font-weight: 700;
-  font-size: 24px;
+  font-size: 26px;
   margin-bottom: 22px;
 }
 
@@ -98,3 +98,4 @@ const chips = [
   background: var(--surface-2);
 }
 </style>
+

@@ -31,7 +31,7 @@ function onKey(e: KeyboardEvent) {
           v-model="draft"
           rows="1"
           class="input"
-          :placeholder="chat.isStreaming ? 'Sora is thinking…' : 'Message Sora — e.g. cheapest flights Tokyo → Kumamoto'"
+          :placeholder="chat.isStreaming ? 'Sora is thinking…' : 'Message Sora — e.g. cheapest flights Tokyo → Osaka'"
           :disabled="chat.isStreaming"
           @keydown="onKey"
           @input="($event.target as HTMLTextAreaElement).style.height = 'auto'; ($event.target as HTMLTextAreaElement).style.height = ($event.target as HTMLTextAreaElement).scrollHeight + 'px'"

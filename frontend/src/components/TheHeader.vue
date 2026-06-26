@@ -34,7 +34,7 @@ const themeLabel = (t: 'light' | 'dark') => (t === 'light' ? 'Dark' : 'Light')
         </svg>
       </button>
       <button class="logo-btn" title="New chat" @click="$emit('newChat')">
-        <div class="logo-mark">S</div>
+        <div class="logo-mark">空</div>
         <div class="logo-text">
           <span class="logo-name">Sora</span>
           <span class="logo-sub">Flight assistant</span>
@@ -122,9 +122,9 @@ const themeLabel = (t: 'light' | 'dark') => (t === 'light' ? 'Dark' : 'Light')
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .logo-text {

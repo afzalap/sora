@@ -12,7 +12,7 @@ const renderedContent = computed(() => marked.parse(props.message.content ?? '')
 <template>
   <div class="assistant-row fade-up">
     <!-- Avatar -->
-    <div class="avatar">S</div>
+    <div class="avatar">空</div>
 
     <!-- Content -->
     <div class="content">
@@ -56,9 +56,9 @@ const renderedContent = computed(() => marked.parse(props.message.content ?? '')
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 1px;
 }
 
