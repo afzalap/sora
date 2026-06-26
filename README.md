@@ -10,7 +10,7 @@ Sora is a conversational flight-booking assistant. You describe what you want in
 |---|---|
 | Backend | Spring Boot 4.1.0, Java 21, Maven |
 | Database | PostgreSQL 17 (pgvector image) via Docker |
-| AI | Spring AI 2.0.0 + Ollama (local LLM) |
+| AI | Spring AI 2.0.0 + GitHub Models (gpt-4o-mini) |
 | Auth | JWT (stateless, BCrypt passwords) |
 | Frontend | Vue 3, Vite, TypeScript, Tailwind CSS |
 
@@ -21,9 +21,9 @@ Phase 2 features (conversation history, RAG, reschedule) and Phase 3 are not wir
 ## Prerequisites
 
 - **Docker Desktop** — for Postgres
-- **Ollama** — for the local LLM ([ollama.com](https://ollama.com))
 - **Java 21+** — if you don't have it globally, IntelliJ's bundled JBR works (see backend startup below)
 - **Node 18+** — for the frontend
+- **GitHub Personal Access Token** — used as the AI API key (free, no billing required); store it in `backend/src/main/resources/application-local.yml` (gitignored)
 
 ---
 
@@ -39,44 +39,26 @@ Stop it with `docker compose down`. To also wipe the data: `docker compose down 
 
 ---
 
-## 2. Start Ollama
+## 2. Configure secrets
 
-**Install Ollama** from [ollama.com](https://ollama.com), then pull the model the app expects:
+Create `backend/src/main/resources/application-local.yml` (gitignored — never commit it):
 
-```bash
-ollama pull llama3.2:3b-instruct-q8_0
+```yaml
+app:
+  jwt:
+    secret: any-random-string-at-least-32-chars-long
+
+spring:
+  ai:
+    openai:
+      api-key: github_pat_YOUR_TOKEN_HERE
 ```
 
-Start the Ollama server (it may already be running as a background service after install):
-
-```bash
-ollama serve
-```
-
-Ollama listens on `http://localhost:11434` by default, which matches the app's config.
-
-To use a different model, override via environment variable when starting the backend:
-
-```bash
-OLLAMA_MODEL=llama3.2 ./mvnw spring-boot:run ...
-```
+For production, pass `JWT_SECRET` and `GROQ_API_KEY` as environment variables instead.
 
 ---
 
-## 3. Configure secrets
-
-The backend needs a JWT signing secret. Copy the example and it's already filled in for local dev:
-
-```bash
-# backend/src/main/resources/
-cp application-local.yml.example application-local.yml
-```
-
-`application-local.yml` is git-ignored. Never commit it. For production, pass `JWT_SECRET` as an environment variable instead.
-
----
-
-## 4. Start the backend
+## 3. Start the backend
 
 From the `backend/` directory:
 
@@ -101,7 +83,7 @@ The schema is rebuilt from scratch on each restart (`ddl-auto: create-drop`). Th
 
 ---
 
-## 5. Start the frontend
+## 4. Start the frontend
 
 From the `frontend/` directory:
 
@@ -129,7 +111,7 @@ chmod +x start.sh   # first time only
 ./start.sh
 ```
 
-Both scripts handle Docker Desktop, Postgres, Ollama, backend, and frontend — opening the backend and frontend in their own terminal windows, then printing the URLs.
+Both scripts handle Docker Desktop, Postgres, backend, and frontend — opening each in their own terminal window then printing the URLs.
 
 On macOS the script auto-detects Java 21+ from `JAVA_HOME`, the macOS `java_home` utility, or IntelliJ's bundled JBR — whichever it finds first.
 
@@ -137,9 +119,8 @@ Or manually:
 
 ```
 1. docker compose up -d          # Postgres
-2. ollama serve                  # Ollama (if not auto-started)
-3. cd backend && ./mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
-4. cd frontend && npm run dev
+2. cd backend && ./mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
+3. cd frontend && npm run dev
 ```
 
 ---
@@ -194,18 +175,59 @@ The chat endpoint is the main entry point for the app. Send natural-language mes
 
 ## AI — how it works
 
-Sora uses **Spring AI's tool-calling (agentic) loop**. When you send a message, the flow is:
+Sora uses **Spring AI's tool-calling (agentic) loop**. The diagram below shows how a natural-language message travels through every layer before a reply reaches the browser.
 
 ```
-Your message
-    → Spring AI sends message + tool list to Ollama
-    → Ollama decides which tool(s) to call and returns a tool-call request
-    → Spring AI executes the Java method
-    → The result is fed back to Ollama as context
-    → Ollama generates the next response (may call more tools)
-    → Loop ends when Ollama produces a plain text reply
-    → That reply is returned to you
+Browser (Vue 3)
+│  POST /api/chat  { message: "find flights to Tokyo next Friday" }
+│
+▼
+ChatController          ← HTTP entry point, reads authenticated Principal
+│
+▼
+ChatService             ← orchestrates the full AI turn
+│   MessageChatMemoryAdvisor  ← prepends conversation history (per-user, in-memory)
+│
+│  sends: system prompt + history + user message + tool list
+▼
+LLM  (gpt-4o-mini via GitHub Models)
+│
+│  The model reads the tool list and decides what to call.
+│  It returns a tool-call request instead of a plain reply.
+│
+▼
+Spring AI runtime       ← intercepts the tool-call, routes to the right Java method
+│
+▼
+SoraTools  (@Tool methods — this is where AI meets CRUD)
+│
+├── searchFlights ────────────► FlightSearchProvider
+│                                (SeededFlightSearchProvider in Phase 1;
+│                                 swap for SerpApiFlightSearchProvider later)
+│
+├── getMyBookings ────────────► BookingService
+├── createBooking ────────────► BookingService ──► BookingRepository ──► PostgreSQL
+└── cancelBooking ────────────► BookingService ──► BookingRepository ──► PostgreSQL
+
+     ↑ tool result is returned to Spring AI as a new message
+     ↑ Spring AI sends the updated thread back to the LLM
+     ↑ the LLM may call more tools, or produce a plain text reply
+     ↑ loop repeats until the LLM stops calling tools
+
+Final plain-text reply  (+ flights list if a search ran)
+│
+▼
+ChatController          ← wraps reply + flights into ChatResponse JSON
+│
+▼
+Browser (Vue 3)         ← renders text as markdown, flights as boarding-pass cards
 ```
+
+**Key points:**
+- The LLM never touches the database directly — it can only call the five named tools.
+- `createBooking` and `cancelBooking` are guarded by the system prompt rule: the model must summarise the action and receive explicit confirmation ("yes / confirm") before calling them.
+- `BookingService` enforces per-user ownership in Java — even if the model called `cancelBooking` with another user's ID, the service would reject it.
+- Conversation memory (`MessageChatMemoryAdvisor`) means turn 2 ("book the first one") works without re-sending the flight list — the history is stored server-side, keyed by username.
 
 ### Available tools
 

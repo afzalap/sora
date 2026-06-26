@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, nextTick } from 'vue'
 import { authHeaders } from '@/api/client'
-import type { ChatMessage } from '@/types'
+import { useAuthStore } from '@/stores/auth'
+import type { ChatMessage, FlightOption } from '@/types'
 
 let seq = 0
 const uid = () => String(++seq)
@@ -43,6 +44,18 @@ export const useChatStore = defineStore('chat', () => {
   // endpoint waits for the full agentic loop, then returns the final reply in
   // one shot — reliable for Phase 1.  Phase 2 will wire typed SSE events
   // (flight-cards, booking-success) when the backend emits them explicitly.
+  // Update a message safely through the reactive array so Vue's proxy
+  // detects the change and re-renders. Mutating the original object reference
+  // (returned by addAssistantPlaceholder) bypasses the proxy and can silently
+  // fail to trigger an update.
+  function setMessageContent(id: string, content: string, flights?: FlightOption[]) {
+    const msg = messages.value.find((m) => m.id === id)
+    if (msg) {
+      msg.content = content
+      if (flights) msg.flights = flights
+    }
+  }
+
   async function send(content: string, onDone?: () => void) {
     if (isStreaming.value) return
 
@@ -52,7 +65,6 @@ export const useChatStore = defineStore('chat', () => {
     const placeholder = addAssistantPlaceholder()
     isStreaming.value = true
 
-    // Abort after 90 s — without this, fetch blocks forever if Spring or Ollama hangs.
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 90_000)
 
@@ -65,23 +77,24 @@ export const useChatStore = defineStore('chat', () => {
       })
 
       if (!response.ok) {
-        placeholder.content =
-          response.status === 401
-            ? 'Session expired — please sign in again.'
-            : `Server error ${response.status}. Check that Ollama is running and the model is loaded.`
+        if (response.status === 401) {
+          // Token expired — logout() clears the Pinia token ref so
+          // App.vue's v-if flips and the login view appears immediately.
+          useAuthStore().logout()
+          return
+        }
+        setMessageContent(placeholder.id, `Server error ${response.status}. Is Spring Boot running on port 8080?`)
         return
       }
 
-      const data = (await response.json()) as { reply: string }
-      placeholder.content = data.reply
+      const data = (await response.json()) as { reply: string; flights?: FlightOption[] }
+      setMessageContent(placeholder.id, data.reply, data.flights)
 
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
-        placeholder.content =
-          'No response after 90 s. Make sure Ollama is running and the model is loaded:\n\n  ollama run llama3.2:3b-instruct-q8_0'
+        setMessageContent(placeholder.id, 'No response after 90 s. Is the AI backend running?')
       } else {
-        placeholder.content =
-          'Could not reach the backend. Is Spring Boot running on port 8080?'
+        setMessageContent(placeholder.id, 'Could not reach the backend. Is Spring Boot running on port 8080?')
       }
     } finally {
       clearTimeout(timeout)

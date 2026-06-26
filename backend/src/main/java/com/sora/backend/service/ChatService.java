@@ -1,9 +1,14 @@
 package com.sora.backend.service;
 
+import com.sora.backend.dto.ChatResponse;
 import com.sora.backend.flight.FlightSearchProvider;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 
 import java.time.LocalDate;
 
@@ -30,6 +35,12 @@ public class ChatService {
     private final FlightSearchProvider flightSearchProvider;
     private final BookingService bookingService;
 
+    // Storage layer: InMemoryChatMemoryRepository for Phase 1.
+    // Phase 2: swap for JdbcChatMemoryRepository — nothing else in this class changes.
+    private final ChatMemory chatMemory = MessageWindowChatMemory.builder()
+            .chatMemoryRepository(new InMemoryChatMemoryRepository())
+            .build();
+
     public ChatService(ChatClient.Builder chatClientBuilder,
                        FlightSearchProvider flightSearchProvider,
                        BookingService bookingService) {
@@ -38,22 +49,18 @@ public class ChatService {
         this.bookingService = bookingService;
     }
 
-    public String chat(String message, String username) {
-        return chatClient.prompt()
+    public ChatResponse chat(String message, String username) {
+        var tools = new SoraTools(username, flightSearchProvider, bookingService);
+
+        String reply = chatClient.prompt()
                 .system(SYSTEM_PROMPT.formatted(LocalDate.now()))
+                .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, username))
                 .user(message)
-                .tools(new SoraTools(username, flightSearchProvider, bookingService))
+                .tools(tools)
                 .call()
                 .content();
-    }
 
-    // SSE streaming variant — used by ChatController's /api/chat/stream endpoint
-    public Flux<String> stream(String message, String username) {
-        return chatClient.prompt()
-                .system(SYSTEM_PROMPT.formatted(LocalDate.now()))
-                .user(message)
-                .tools(new SoraTools(username, flightSearchProvider, bookingService))
-                .stream()
-                .content();
+        return new ChatResponse(reply, tools.getLastFlightResults());
     }
 }

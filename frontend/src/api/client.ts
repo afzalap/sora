@@ -9,8 +9,6 @@ export const apiClient = axios.create({
 })
 
 // Request interceptor: attach the JWT from localStorage on every request.
-// This is "token-per-request" auth — stateless, which matches our Spring
-// Security setup where there is no server-side session.
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('sora_token')
   if (token) {
@@ -18,6 +16,20 @@ apiClient.interceptors.request.use((config) => {
   }
   return config
 })
+
+// Response interceptor: on 401, call auth.logout() so the Pinia token ref
+// is cleared and App.vue's v-if="!auth.isLoggedIn" swaps to the login view.
+// useAuthStore() is called lazily inside the callback to avoid a circular
+// import (auth.ts imports apiClient, so we can't import auth.ts at the top).
+apiClient.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      import('@/stores/auth').then(({ useAuthStore }) => useAuthStore().logout())
+    }
+    return Promise.reject(err)
+  },
+)
 
 // For the streaming endpoint we use the raw fetch API (Axios doesn't support
 // ReadableStream), so we also export a helper that attaches the JWT header.

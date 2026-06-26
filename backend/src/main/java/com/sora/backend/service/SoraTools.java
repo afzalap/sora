@@ -22,10 +22,17 @@ public class SoraTools {
     private final FlightSearchProvider flightSearchProvider;
     private final BookingService bookingService;
 
+    // Captured after each search call so ChatService can include them in the response.
+    private List<FlightOption> lastFlightResults = List.of();
+
     public SoraTools(String username, FlightSearchProvider flightSearchProvider, BookingService bookingService) {
         this.username = username;
         this.flightSearchProvider = flightSearchProvider;
         this.bookingService = bookingService;
+    }
+
+    public List<FlightOption> getLastFlightResults() {
+        return lastFlightResults;
     }
 
     @Tool(description = "Get today's date in ISO format (YYYY-MM-DD). Call this when you need to know the current date.")
@@ -39,7 +46,8 @@ public class SoraTools {
             Departure date must be in ISO format YYYY-MM-DD.
             """)
     public List<FlightOption> searchFlights(String origin, String destination, String departureDate) {
-        return flightSearchProvider.search(origin, destination, LocalDate.parse(departureDate));
+        lastFlightResults = flightSearchProvider.search(origin, destination, LocalDate.parse(departureDate));
+        return lastFlightResults;
     }
 
     @Tool(description = """
@@ -52,7 +60,8 @@ public class SoraTools {
             """)
     public List<FlightOption> searchCheapestFlights(String origin, String destination,
                                                      String yearMonth, int tripDurationDays) {
-        return flightSearchProvider.searchCheapest(origin, destination, yearMonth, tripDurationDays);
+        lastFlightResults = flightSearchProvider.searchCheapest(origin, destination, yearMonth, tripDurationDays);
+        return lastFlightResults;
     }
 
     @Tool(description = "Get the current user's flight bookings (confirmed and cancelled).")
