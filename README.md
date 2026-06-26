@@ -2,6 +2,8 @@
 
 Sora（空, Japanese for "sky"）is a conversational flight-booking assistant. You describe what you want in plain language, the AI searches for flights, confirms the details with you, and books only when you say so. It handles one passenger, single-destination flights — no hotels, no multi-city.
 
+![Sora UI](docs/screenshot.png)
+
 Built to learn Spring Boot and Spring AI — covering layered architecture, Spring Security, Spring Data JPA, and how Spring AI's tool-calling works in practice.
 
 Unlike a chatbot, the LLM here doesn't just reply with text — it calls real Java methods that read and write to a database.
