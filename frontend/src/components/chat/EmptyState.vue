@@ -1,8 +1,8 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 defineEmits<{ send: [text: string] }>()
 
 const chips = [
-  ‘Cheapest flights Tokyo → Osaka, 15-day round trip’,
+  'Cheapest flights Tokyo → Osaka, 15-day round trip',
   "What's the baggage allowance on ANA domestic?",
   'Any flights from HND to OKA this weekend?',
   'Show my bookings',
@@ -98,4 +98,3 @@ const chips = [
   background: var(--surface-2);
 }
 </style>
-
