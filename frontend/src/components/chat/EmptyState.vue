@@ -2,7 +2,7 @@
 defineEmits<{ send: [text: string] }>()
 
 const chips = [
-  'Cheapest flights Tokyo â†’ Kumamoto, 15-day round trip',
+  ‘Cheapest flights Tokyo → Osaka, 15-day round trip’,
   "What's the baggage allowance on ANA domestic?",
   'Any flights from HND to OKA this weekend?',
   'Show my bookings',
@@ -15,7 +15,7 @@ const chips = [
     <div class="sora-mark">空</div>
     <h1 class="greeting">Hi, I'm Sora.</h1>
     <p class="intro">
-      Tell me where you want to go â€” I'll search live flights and handle your bookings.
+      Tell me where you want to go — I'll search live flights and handle your bookings.
       I always confirm before I book anything.
     </p>
 
