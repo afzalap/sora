@@ -6,7 +6,17 @@ import FlightCard from './FlightCard.vue'
 
 const props = defineProps<{ message: ChatMessage }>()
 
-const renderedContent = computed(() => marked.parse(props.message.content ?? '') as string)
+// When flight cards are present, only show the first sentence of the reply —
+// everything after that is the AI listing flight details we already render as cards.
+const displayContent = computed(() => {
+  const text = props.message.content ?? ''
+  if (!props.message.flights?.length) return text
+  // Take everything up to the first newline or bullet point
+  const firstLine = text.split(/\n|(?=\*|\-|\d\.)/)[0].trim()
+  return firstLine
+})
+
+const renderedContent = computed(() => marked.parse(displayContent.value) as string)
 </script>
 
 <template>
