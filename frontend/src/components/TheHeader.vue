@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 defineProps<{
@@ -16,6 +17,17 @@ defineEmits<{
 const auth = useAuthStore()
 const userInitial = auth.username?.charAt(0).toUpperCase() ?? '?'
 const themeLabel = (t: 'light' | 'dark') => (t === 'light' ? 'Dark' : 'Light')
+
+const menuOpen = ref(false)
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value
+}
+
+function logout() {
+  menuOpen.value = false
+  auth.logout()
+}
 </script>
 
 <template>
@@ -49,7 +61,20 @@ const themeLabel = (t: 'light' | 'dark') => (t === 'light' ? 'Dark' : 'Light')
         <span class="badge">{{ confirmedCount }}</span>
       </button>
       <button class="text-btn" @click="$emit('toggleTheme')">{{ themeLabel(theme) }}</button>
-      <div class="avatar">{{ userInitial }}</div>
+
+      <!-- Avatar + logout dropdown -->
+      <div class="avatar-wrap">
+        <button class="avatar" :class="{ active: menuOpen }" @click="toggleMenu">
+          {{ userInitial }}
+        </button>
+        <div v-if="menuOpen" class="dropdown">
+          <div class="dropdown-user">{{ auth.username }}</div>
+          <div class="dropdown-divider" />
+          <button class="dropdown-item logout" @click="logout">Log out</button>
+        </div>
+        <!-- click-outside backdrop -->
+        <div v-if="menuOpen" class="backdrop" @click="menuOpen = false" />
+      </div>
     </div>
   </header>
 </template>
@@ -199,6 +224,10 @@ const themeLabel = (t: 'light' | 'dark') => (t === 'light' ? 'Dark' : 'Light')
   border-color: var(--accent);
 }
 
+.avatar-wrap {
+  position: relative;
+}
+
 .avatar {
   width: 32px;
   height: 32px;
@@ -211,5 +240,66 @@ const themeLabel = (t: 'light' | 'dark') => (t === 'light' ? 'Dark' : 'Light')
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.avatar:hover,
+.avatar.active {
+  border-color: var(--accent);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-user {
+  padding: 10px 14px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 0;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 0.12s;
+}
+.dropdown-item:hover {
+  background: var(--surface-2);
+}
+.dropdown-item.logout {
+  color: #ff453a;
+}
+.dropdown-item.logout:hover {
+  background: rgba(255, 69, 58, 0.08);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
 }
 </style>
